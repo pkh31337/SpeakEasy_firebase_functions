@@ -1,3 +1,97 @@
+// https://github.com/firebase/functions-samples/blob/main/Node/quickstarts/thumbnails/functions/index.js
+/**
+ * Copyright 2022 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+"use strict";
+
+// [START v2storageImports]
+// [START v2storageSDKImport]
+import {onObjectFinalized} from "firebase-functions/v2/storage";
+// [END v2storageSDKImport]
+
+// [START v2storageAdditionalImports]
+import {initializeApp} from "firebase-admin/app";
+import {getStorage} from "firebase-admin/storage";
+import logger = require("firebase-functions/logger");
+import path = require("path");
+
+// library for image resizing
+import sharp = require("sharp");
+
+
+initializeApp();
+// [END v2storageAdditionalImports]
+// [END v2storageImports]
+
+// [START v2storageGenerateThumbnail]
+/**
+ * When an image is uploaded in the Storage bucket,
+ * generate a thumbnail automatically using sharp.
+ */
+// [START v2storageGenerateThumbnailTrigger]
+exports.generateThumbnail = onObjectFinalized({cpu: 2, region: "asia-northeast3"}, async (event) => {
+// [END v2storageGenerateThumbnailTrigger]
+
+  // [START v2storageEventAttributes]
+  const fileBucket = event.data.bucket; // Storage bucket containing the file.
+  const filePath = event.data.name; // File path in the bucket.
+  const contentType = event.data.contentType; // File content type.
+  // [END v2storageEventAttributes]
+
+  // [START v2storageStopConditions]
+  // Exit if this is triggered on a file that is not an image.
+  if (contentType == null || !contentType.startsWith("image/")) {
+    return logger.log("This is not an image.");
+  }
+  // Exit if the image is already a thumbnail.
+  const fileName = path.basename(filePath);
+  if (fileName.startsWith("thumb_")) {
+    return logger.log("Already a Thumbnail.");
+  }
+  // [END v2storageStopConditions]
+
+  // [START v2storageThumbnailGeneration]
+  // Download file into memory from bucket.
+  const bucket = getStorage().bucket(fileBucket);
+  const downloadResponse = await bucket.file(filePath).download();
+  const imageBuffer = downloadResponse[0];
+  logger.log("Image downloaded!");
+
+  // Generate a thumbnail using sharp.
+  const thumbnailBuffer = await sharp(imageBuffer).resize({
+    width: 200,
+    height: 200,
+    withoutEnlargement: true,
+  }).toBuffer();
+  logger.log("Thumbnail created");
+
+  // Prefix 'thumb_' to file name.
+  const thumbFileName = `thumb_${fileName}`;
+  const thumbFilePath = path.join(path.dirname(filePath), thumbFileName);
+
+  // Upload the thumbnail.
+  const metadata = {contentType: contentType};
+  await bucket.file(thumbFilePath).save(thumbnailBuffer, {
+    metadata: metadata,
+  });
+  return logger.log("Thumbnail uploaded!");
+  // [END v2storageThumbnailGeneration]
+});
+// [END v2storageGenerateThumbnail]
+
+
 /**
  * Import function triggers from their respective submodules:
  *
@@ -7,16 +101,16 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {onRequest} from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
+// import {onRequest} from "firebase-functions/v2/https";
+// import * as logger from "firebase-functions/logger";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 
-export const helloWorld = onRequest((request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
-});
+// export const helloWorld = onRequest((request, response) => {
+//  logger.info("Hello logs!", {structuredData: true});
+//  response.send("Hello from Firebase!");
+// });
 /*
 [정보] vscode 에서 TypeScript 직접 Run / Debug 하기
 기왕 다 같이 배우는 입장인데 팁 좀 공유하고자 합니다.
