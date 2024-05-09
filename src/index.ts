@@ -56,8 +56,17 @@ exports.generateThumbnail = onObjectFinalized({cpu: 2, region: "asia-northeast3"
     return logger.log("This is not an image.");
   }
   // Exit if the image is already a thumbnail.
+  // 파일 확장자를 포함한 전체 파일명
   const fileName = path.basename(filePath);
-  if (fileName.startsWith("thumb_")) {
+  // 파일 확장자
+  const fileExtension = path.extname(filePath);
+  // 확장자를 제외한 파일명
+  const fileNameWithoutExtension = path.basename(fileName, fileExtension);
+
+
+  
+  // 파일명의 끝부분이 "_thumb"로 끝나는지 검사
+  if (fileNameWithoutExtension.endsWith("_thumb")) {
     return logger.log("Already a Thumbnail.");
   }
   // [END v2storageStopConditions]
@@ -78,7 +87,11 @@ exports.generateThumbnail = onObjectFinalized({cpu: 2, region: "asia-northeast3"
   logger.log("Thumbnail created");
 
   // Prefix 'thumb_' to file name.
-  const thumbFileName = `thumb_${fileName}`;
+  // const thumbFileName = `thumb_${fileName}`;
+  // const thumbFilePath = path.join(path.dirname(filePath), thumbFileName);
+
+  // 파일명의 끝에 "_thumb" 추가 후 확장자명 다시 붙임
+  const thumbFileName = `${fileNameWithoutExtension}_thumb${fileExtension}`;
   const thumbFilePath = path.join(path.dirname(filePath), thumbFileName);
 
   // Upload the thumbnail.
