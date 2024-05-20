@@ -63,8 +63,6 @@ exports.generateThumbnail = onObjectFinalized({cpu: 2, region: "asia-northeast3"
   // 확장자를 제외한 파일명
   const fileNameWithoutExtension = path.basename(fileName, fileExtension);
 
-
-  
   // 파일명의 끝부분이 "_thumb"로 끝나는지 검사
   if (fileNameWithoutExtension.endsWith("_thumb")) {
     return logger.log("Already a Thumbnail.");
@@ -103,6 +101,59 @@ exports.generateThumbnail = onObjectFinalized({cpu: 2, region: "asia-northeast3"
   // [END v2storageThumbnailGeneration]
 });
 // [END v2storageGenerateThumbnail]
+
+
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+// FirebaseAppError: The default Firebase app already exists. This means you called initializeApp() more than once without providing an app name as the second argument.
+// In most cases you only need to call initializeApp() once. But if you do want to initialize multiple apps, pass a second argument to initializeApp() to give each app a unique name.
+// admin.initializeApp();
+
+exports.resetDailyCountsAndPoints = functions.region("asia-northeast3").pubsub.schedule("0 0 * * *")
+  .timeZone("Asia/Seoul") // 시간대 설정. 필요에 따라 변경하세요.
+  .onRun(async (context) => {
+    const usersRef = admin.firestore().collection("users");
+    const snapshot = await usersRef.get();
+
+    const updates = snapshot.docs.map(async (doc) => {
+      // isAnonymous가 true인 경우 업데이트를 진행하지 않음
+      if (doc.data().isAnonymous) {
+        return Promise.resolve();
+      }
+
+      // daily * AchievementCount 필드들을 0으로 초기화
+      const resetAchievements = {
+        dailyMessageAchievementCount: 0,
+        dailyReplyAchievementCount: 0,
+        dailyPostAchievementCount: 0,
+        dailyCommentAchievementCount: 0,
+        dailyLoginAchievementCount: 0,
+        dailyChatAchievementCount: 0,
+        dailyReviewAchievementCount: 0,
+        dailyPartnerAchievementCount: 0,
+        dailyFlashcardAchievementCount: 0,
+        dailyEventAchievementCount: 0,
+      };
+
+      // currentGeneralPoint 필드에서 10을 빼고, 결과가 0보다 작으면 0으로 조정
+      const newGeneralPoint = doc.data().currentGeneralPoint ? doc.data().currentGeneralPoint - 10 : -10;
+      const adjustedGeneralPoint = Math.max(0, newGeneralPoint);
+
+      // currentPartnerFavorPoints 배열의 각 요소에서 10을 빼고, 결과가 0보다 작으면 0으로 조정
+      const adjustedPartnerFavorPoints = doc.data().currentPartnerFavorPoints.map((point: number) => Math.max(0, point - 10));
+
+      // 문서 업데이트
+      return doc.ref.update({
+        ...resetAchievements,
+        currentGeneralPoint: adjustedGeneralPoint,
+        currentPartnerFavorPoints: adjustedPartnerFavorPoints,
+      });
+    });
+
+    // 모든 업데이트를 기다림
+    await Promise.all(updates);
+    console.log("Daily counts and points have been reset and adjusted for non-anonymous users.");
+  });
 
 
 /**
