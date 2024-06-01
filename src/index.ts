@@ -139,15 +139,10 @@ exports.resetDailyCountsAndPoints = functions.region("asia-northeast3").pubsub.s
       const newGeneralPoint = doc.data().currentGeneralPoint ? doc.data().currentGeneralPoint - 10 : -10;
       const adjustedGeneralPoint = Math.max(0, newGeneralPoint);
 
-      // currentPartnerFavorPoints 배열의 각 요소에서 10을 빼고, 결과가 0보다 작으면 0으로 조정
-      // currentPartnerFavorPoints가 undefined일 경우 빈 배열([])을 사용
-      const adjustedPartnerFavorPoints = (doc.data().currentPartnerFavorPoints || []).map((point: number) => Math.max(0, point - 10));
-
       // 문서 업데이트
       return doc.ref.update({
         ...resetAchievements,
         currentGeneralPoint: adjustedGeneralPoint,
-        currentPartnerFavorPoints: adjustedPartnerFavorPoints,
       });
     });
 
